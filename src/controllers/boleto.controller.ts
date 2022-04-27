@@ -11,11 +11,7 @@ export class BoletoController {
     try {
         let boleto = await this.boletoService.init(boletoNumber);
 
-        res.status(HttpStatus.OK).json({
-            barCode: boleto,
-            amount: "",
-            expirationDate: ""
-        })
+        res.status(HttpStatus.OK).json(boleto)
         
     } catch (error) {
         res.status(HttpStatus.BAD_REQUEST).json(error.response)
