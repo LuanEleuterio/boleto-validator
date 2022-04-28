@@ -10,12 +10,12 @@ export class BoletoService {
     private readonly bancarioService = new BancarioService()
 
     init(boleto: any): string {
-        console.log(this.validatorHelper.containChar(boleto))
 
         if(this.validatorHelper.containChar(boleto)) throw new BadRequestException("Boleto contém caracteres não numéricos")
         
         if(boleto.length === 47) return this.bancarioService.generate(boleto)
-        else if( boleto.length === 48) console.log("concessionárias")//concessionárias
+        else if( boleto.length === 48) console.log("concessionárias")
+        else throw new BadRequestException("Linha Digitável inválida!")
 
     }
 }

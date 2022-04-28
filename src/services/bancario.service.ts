@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { FormatterHelper } from 'src/helpers/formatter.helper';
+const moment = require('moment');
 
 @Injectable()
 export class BancarioService {
@@ -8,24 +9,24 @@ export class BancarioService {
 
     generate(code: string): any {
         let codeSplited = this.splitCode(code)
-        
-        console.log(codeSplited)
 
         if( this.verifyModule10(codeSplited.slice(0,3)) ){
             
             let barCode = this.genBarCode(codeSplited)
-            
-            //TODO get amount
 
-            //TODO get expirationDate
+            let amount = this.getAmount(codeSplited[4])
+            
+            let expirationDate = this.getExpirationDate(codeSplited[4])
+            
+            if(!this.verifyModule11(barCode)) throw new BadRequestException("Código de Barras inválido")
 
             return {
                 barCode: barCode,
-                amount: "",
-                expirationDate: "" 
+                amount: amount,
+                expirationDate: expirationDate
             }
 
-        }else throw new BadRequestException("Numeração do boleto incorreta!")
+        }else throw new BadRequestException("Numeração da linha digitável incorreta!")
     }
 
     splitCode(code: string): Array<string> {
@@ -34,7 +35,7 @@ export class BancarioService {
         return intervalDefinition.map( interval => code.substring( parseInt(interval.split(',')[0]), parseInt(interval.split(',')[1])) )
     }
 
-    verifyModule10(code: Array<string>): any{
+    verifyModule10(code: Array<string>): any {
 
         let allDigitsOK = true
         
@@ -68,6 +69,33 @@ export class BancarioService {
 
         return allDigitsOK
     }   
+
+    verifyModule11(barCode: string): boolean {
+        
+        let multiplicator = 2
+        let acumulator = 0
+
+        let firstPart =  barCode.substring(0, 4)
+        let secondPart = barCode.substring(5, barCode.length)
+        let barCodePartials = `${firstPart}${secondPart}`
+
+        let dv = parseInt(barCode.substring(4,5))
+
+        barCodePartials = this.formatterHelper.reverseString(barCodePartials)
+
+        barCodePartials.split('').map(code => {
+              
+            acumulator += parseInt(code) * multiplicator
+
+            multiplicator = multiplicator === 9 ? 2 : multiplicator++
+        })
+
+        let newDV = 11 - (acumulator % 11)
+
+        if(newDV === 0 || newDV === 10 || newDV === 11) newDV = 1
+
+        return dv === newDV
+    }
 
     reduceNumber(number: number): number {
 
@@ -112,6 +140,19 @@ export class BancarioService {
         barCode += code[2].substring(0, 10)
 
         return barCode
+    }
+
+    getAmount(code: string): string{
+        let price = parseInt(code.substring(4,14))
+        price = price / 100
+        return  price.toFixed(2)
+    }
+
+    getExpirationDate(code: string): any{
+        let BASE_DATE = '1997-10-07'
+        let fatorVenc = parseInt(code.substring(0,4))
+
+        return moment(BASE_DATE).add(fatorVenc, 'days').format('YYYY-MM-DD')
     }
 
 }
